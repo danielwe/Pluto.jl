@@ -59,6 +59,11 @@ using Pluto.WorkspaceManager: poll
         end
         """,
         "StructWithCustomShowThatLogs()", # 21
+        """
+        printstyled(stdout, "hello", color=:red)
+        """, # 22
+        "show(collect(1:500))", # 23
+        "display(collect(1:500))", # 24
     ]))
 
     @testset "Stdout" begin
@@ -121,6 +126,25 @@ using Pluto.WorkspaceManager: poll
         @test poll(5, 1/60) do
             length(notebook.cells[21].logs) == 2
         end
+    end
+
+    @testset "ANSI Color Output" begin
+        update_run!(🍭, notebook, notebook.cells[22])
+        msg = only(notebook.cells[22].logs)["msg"][1]
+
+        @test startswith(msg, Base.text_colors[:red])
+        @test endswith(msg, Base.text_colors[:default])
+    end
+    
+    @testset "show(...) and display(...) behavior" begin
+        update_run!(🍭, notebook, notebook.cells[23:24])
+
+        msg_show = only(notebook.cells[23].logs)["msg"][1]
+        msg_display = only(notebook.cells[24].logs)["msg"][1]
+
+        # Both should contain the first and last elements, but only `show` should contain the middle element
+        @test contains(msg_show, "250") && contains(msg_show, "500") && contains(msg_show, "1")
+        @test !contains(msg_display, "250") && contains(msg_display, "500") && contains(msg_display, "1")
     end
 
     @testset "Logging respects maxlog" begin
